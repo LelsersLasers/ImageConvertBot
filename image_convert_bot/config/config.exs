@@ -6,7 +6,6 @@ config :nostrum,
   streamlink: nil,
   youtubedl: nil
 
-config :logger, :console,
-  metadata: [:shard, :guild, :channel]
+config :logger, :console, metadata: [:shard, :guild, :channel]
 
 config :logger, level: :debug
