@@ -14,8 +14,9 @@ defmodule ImageConvertBot.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {ImageConvertBot.Application, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger, :ssl, :crypto],
+      mod: {ImageConvertBot.Application, []}
+      # extra_applications: [:logger]
     ]
   end
 
