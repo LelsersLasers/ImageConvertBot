@@ -30,7 +30,7 @@ defmodule ImageConvertBot do
           |> Enum.map(&URI.parse(&1).path)
           |> Enum.map(&(String.split(&1, "/") |> List.last()))
 
-        new_file_names =
+        new_full_filenames =
           Enum.zip(urls, filenames)
           |> Enum.map(fn {url, filename} ->
             response = Req.get!(url)
@@ -57,16 +57,15 @@ defmodule ImageConvertBot do
             new_full_filename
           end)
 
-        new_file_names
-        |> Enum.each(fn new_file_name ->
-          IO.puts("Uploading #{new_file_name}")
-        end)
-
         Nostrum.Api.create_message(
           msg.channel_id,
           content: "Resulting files:",
-          message_reference: %{message_id: msg.id}
+          message_reference: %{message_id: msg.id},
+          files: new_full_filenames
         )
+
+        new_full_filenames
+        |> Enum.each(&File.rm!(&1))
       end
     end
   end
