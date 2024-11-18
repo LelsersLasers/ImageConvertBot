@@ -92,11 +92,11 @@ defmodule ImageConvertBot do
 
   defp convert_image(input, output) do
     ExMagick.init()
-    |> ExMagick.put_image(full_filename)
-    |> ExMagick.output(new_full_filename)
+    |> ExMagick.put_image(input)
+    |> ExMagick.output(output)
 
-    File.rm!(full_filename)
-    new_full_filename
+    File.rm!(input)
+    output
   end
 
   defp send_converted_files(files, msg) do
