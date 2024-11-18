@@ -1,18 +1,14 @@
 defmodule ImageConvertBot do
-  @moduledoc """
-  Documentation for `ImageConvertBot`.
-  """
+  use Nostrum.Consumer
 
-  @doc """
-  Hello world.
+  alias Nostrum.Api
 
-  ## Examples
-
-      iex> ImageConvertBot.hello()
-      :world
-
-  """
-  def hello do
-    :world
+  def handle_event({:MESSAGE_CREATE, msg, _ws_state}) do
+    case msg.content do
+      "ping!" ->
+        Api.create_message(msg.channel_id, "I copy and pasted this code")
+      _ ->
+        :ignore
+    end
   end
 end
