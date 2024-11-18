@@ -3,6 +3,11 @@ defmodule ImageConvertBot do
 
   alias Nostrum.Api
 
+  def start_link() do
+    # Starts the Consumer process
+    Nostrum.Consumer.start_link(__MODULE__)
+  end
+
   def handle_event({:MESSAGE_CREATE, msg, _ws_state}) do
     case msg.content do
       "ping!" ->
