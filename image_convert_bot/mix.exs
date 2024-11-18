@@ -5,7 +5,7 @@ defmodule ImageConvertBot.MixProject do
     [
       app: :image_convert_bot,
       version: "0.1.0",
-      elixir: "~> 1.16",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
