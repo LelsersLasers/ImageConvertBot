@@ -5,3 +5,6 @@ config :nostrum,
   gateway_intents: [:guilds, :guild_messages, :message_content],
   youtubedl: nil,
   ffmpeg: nil
+
+config :logger, :console,
+  metadata: [:shard, :guild, :channel]
