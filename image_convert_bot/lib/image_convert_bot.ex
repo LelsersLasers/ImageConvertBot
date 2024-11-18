@@ -1,12 +1,14 @@
 defmodule ImageConvertBot do
   use Nostrum.Consumer
 
-  alias Nostrum.Api
-
   def handle_event({:MESSAGE_CREATE, msg, _state}) do
     case msg.content do
-      "!ping" ->
-        Api.create_message(msg.channel_id, "Pong!")
+      "!convert" ->
+        Nostrum.Api.create_message(
+          msg.channel_id,
+          content: "Hello!",
+          message_reference: %{message_id: msg.id},
+      )
       _ ->
         :ignore
     end
