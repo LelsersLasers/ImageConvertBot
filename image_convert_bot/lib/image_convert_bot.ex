@@ -14,11 +14,10 @@ defmodule ImageConvertBot do
         Nostrum.Api.create_message(
           msg.channel_id,
           content: "Please provide a type to convert to!",
-          message_reference: %{message_id: msg.id}
+          message_reference: %{message_id: msg.id},
+          allowed_mentions: :none
         )
       else
-        Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
-
         File.mkdir_p!(@folder)
 
         urls =
@@ -30,42 +29,53 @@ defmodule ImageConvertBot do
           |> Enum.map(&URI.parse(&1).path)
           |> Enum.map(&(String.split(&1, "/") |> List.last()))
 
-        new_full_filenames =
-          Enum.zip(urls, filenames)
-          |> Enum.map(fn {url, filename} ->
-            response = Req.get!(url)
-            full_filename = Path.join([@folder, filename])
-            File.write!(full_filename, response.body)
+        if Enum.empty?(urls) do
+          Nostrum.Api.create_message(
+            msg.channel_id,
+            content: "Please provide at least one image to convert!",
+            message_reference: %{message_id: msg.id},
+            allowed_mentions: :none
+          )
+        else
+          Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
 
-            old_ext =
-              filename
-              |> Path.extname()
+          new_full_filenames =
+            Enum.zip(urls, filenames)
+            |> Enum.map(fn {url, filename} ->
+              response = Req.get!(url)
+              full_filename = Path.join([@folder, filename])
+              File.write!(full_filename, response.body)
 
-            new_filename =
-              filename
-              |> Path.basename()
-              |> String.replace(old_ext, ".#{type}")
+              old_ext =
+                filename
+                |> Path.extname()
 
-            new_full_filename = Path.join([@folder, new_filename])
+              new_filename =
+                filename
+                |> Path.basename()
+                |> String.replace(old_ext, ".#{type}")
 
-            ExMagick.init()
-            |> ExMagick.put_image(full_filename)
-            |> ExMagick.output(new_full_filename)
+              new_full_filename = Path.join([@folder, new_filename])
 
-            File.rm!(full_filename)
+              ExMagick.init()
+              |> ExMagick.put_image(full_filename)
+              |> ExMagick.output(new_full_filename)
 
-            new_full_filename
-          end)
+              File.rm!(full_filename)
 
-        Nostrum.Api.create_message(
-          msg.channel_id,
-          content: "Resulting files:",
-          message_reference: %{message_id: msg.id},
-          files: new_full_filenames
-        )
+              new_full_filename
+            end)
 
-        new_full_filenames
-        |> Enum.each(&File.rm!(&1))
+          Nostrum.Api.create_message(
+            msg.channel_id,
+            content: "Resulting files:",
+            message_reference: %{message_id: msg.id},
+            files: new_full_filenames
+          )
+
+          new_full_filenames
+          |> Enum.each(&File.rm!(&1))
+        end
       end
     end
   end
