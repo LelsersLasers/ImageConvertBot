@@ -1,18 +1,9 @@
 defmodule ImageConvertBot do
-  @moduledoc """
-  Documentation for `ImageConvertBot`.
-  """
+  use Nostrum.Consumer
 
-  @doc """
-  Hello world.
+  def handle_event(event) do
+    IO.inspect event
 
-  ## Examples
-
-      iex> ImageConvertBot.hello()
-      :world
-
-  """
-  def hello do
-    :world
+    :noop
   end
 end
