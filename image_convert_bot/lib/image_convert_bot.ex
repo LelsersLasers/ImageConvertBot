@@ -8,6 +8,32 @@ defmodule ImageConvertBot do
   end
 
   def handle_event({:MESSAGE_CREATE, msg, _state}) do
+    cond do
+      msg.author.bot ->
+        :noop
+
+      String.starts_with?(msg.content, "!help") ->
+        handle_help_command(msg)
+
+      String.starts_with?(msg.content, "!convert") ->
+        handle_convert_command(msg)
+
+      true ->
+        :noop
+    end
+  end
+
+  def handle_event(_), do: :noop
+
+  defp handle_help_command(msg) do
+    reply_with(
+      msg,
+      "Use: `!convert <type>` and add images as attachments to convert them.\n" <>
+        "Example: `!convert png`"
+    )
+  end
+
+  defp handle_convert_command(msg) do
     with true <- String.starts_with?(msg.content, "!convert"),
          [_cmd, type] <- String.split(msg.content, " ", parts: 2),
          :ok <- ensure_temp_folder(),
@@ -24,8 +50,6 @@ defmodule ImageConvertBot do
         reply_with(msg, "Please provide at least one image to convert!")
     end
   end
-
-  def handle_event(_), do: :noop
 
   defp ensure_temp_folder do
     File.mkdir_p!(@folder)
