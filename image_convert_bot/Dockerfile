@@ -15,17 +15,8 @@ RUN dnf update -y && \
     autoconf \
     erlang \
     elixir \
-    glibc-langpack-en \
     ImageMagick \
     && dnf clean all
-
-# Configure locale to en_US.UTF-8
-RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
-    localectl set-locale LANG=en_US.UTF-8
-
-# Set environment variables for the locale
-ENV LANG en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
 
 # Set the working directory in the container
 WORKDIR /app
