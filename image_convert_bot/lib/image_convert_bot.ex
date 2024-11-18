@@ -83,6 +83,14 @@ defmodule ImageConvertBot do
     |> Map.get(:body)
     |> (&File.write!(full_filename, &1)).()
 
+    if full_filename != new_full_filename do
+      convert_image(full_filename, new_full_filename)
+    else
+      full_filename
+    end
+  end
+
+  defp convert_image(input, output) do
     ExMagick.init()
     |> ExMagick.put_image(full_filename)
     |> ExMagick.output(new_full_filename)
