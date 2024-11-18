@@ -57,6 +57,8 @@ defmodule ImageConvertBot do
   end
 
   defp process_conversion(msg, type, attachments) do
+    Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
+
     msg
     |> fetch_image_urls_and_filenames(attachments)
     |> Enum.map(&download_and_convert_image(&1, type))
@@ -89,8 +91,6 @@ defmodule ImageConvertBot do
   end
 
   defp send_converted_files(files, msg) do
-    Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
-
     Nostrum.Api.create_message(
       msg.channel_id,
       content: "Resulting files:",
