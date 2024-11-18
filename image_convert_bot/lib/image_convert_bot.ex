@@ -17,6 +17,8 @@ defmodule ImageConvertBot do
           message_reference: %{message_id: msg.id}
         )
       else
+        Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
+
         File.mkdir_p!(@folder)
 
         urls =
@@ -62,7 +64,7 @@ defmodule ImageConvertBot do
 
         Nostrum.Api.create_message(
           msg.channel_id,
-          content: "Converting to #{type}!",
+          content: "Resulting files:",
           message_reference: %{message_id: msg.id}
         )
       end
