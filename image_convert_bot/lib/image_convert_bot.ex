@@ -1,7 +1,7 @@
 defmodule ImageConvertBot do
   use Nostrum.Consumer
 
-  # folder = Path.join([File.cwd!(), "temp"])
+  @folder Path.join([File.cwd!(), "temp"])
 
   def handle_event({:MESSAGE_CREATE, msg, _state}) do
     if String.starts_with?(msg.content, "!convert") do
@@ -17,6 +17,8 @@ defmodule ImageConvertBot do
           message_reference: %{message_id: msg.id}
         )
       else
+        File.mkdir_p!(@folder)
+
         urls =
           msg.attachments
           |> Enum.map(& &1.url)
@@ -26,15 +28,37 @@ defmodule ImageConvertBot do
           |> Enum.map(&URI.parse(&1).path)
           |> Enum.map(&(String.split(&1, "/") |> List.last()))
 
-        Enum.zip(urls, filenames)
-        |> Enum.each(fn {url, filename} ->
-          response = Req.get!(url)
-          File.write!(filename, response.body)
-        end)
+        new_file_names =
+          Enum.zip(urls, filenames)
+          |> Enum.map(fn {url, filename} ->
+            response = Req.get!(url)
+            full_filename = Path.join([@folder, filename])
+            File.write!(full_filename, response.body)
 
-        # |> Enum.map(&Req.get!(&1))
-        # |> Enum.map(& &1.body)
-        # |> Enum.each(&File.write("image.#{type}", &1))
+            old_ext =
+              filename
+              |> Path.extname()
+
+            new_filename =
+              filename
+              |> Path.basename()
+              |> String.replace(old_ext, ".#{type}")
+
+            new_full_filename = Path.join([@folder, new_filename])
+
+            ExMagick.init()
+            |> ExMagick.put_image(full_filename)
+            |> ExMagick.output(new_full_filename)
+
+            File.rm!(full_filename)
+
+            new_full_filename
+          end)
+
+        new_file_names
+        |> Enum.each(fn new_file_name ->
+          IO.puts("Uploading #{new_file_name}")
+        end)
 
         Nostrum.Api.create_message(
           msg.channel_id,
