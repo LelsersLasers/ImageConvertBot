@@ -7,6 +7,8 @@ defmodule ImageConvertBot.Application do
       ImageConvertBot
     ]
 
+    IO.puts "Starting ImageConvertBot"
+
     opts = [strategy: :one_for_one, name: ImageConvertBot.Supervisor]
     Supervisor.start_link(children, opts)
   end
