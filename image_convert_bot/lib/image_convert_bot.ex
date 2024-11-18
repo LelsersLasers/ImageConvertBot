@@ -1,6 +1,8 @@
 defmodule ImageConvertBot do
   use Nostrum.Consumer
 
+  # folder = Path.join([File.cwd!(), "temp"])
+
   def handle_event({:MESSAGE_CREATE, msg, _state}) do
     if String.starts_with?(msg.content, "!convert") do
       type =
@@ -15,10 +17,25 @@ defmodule ImageConvertBot do
           message_reference: %{message_id: msg.id}
         )
       else
-        # content = "Converting to #{type}!" <> " " <> msg.attachments |> Enum.map(& &1.url) |> Enum.join(", ")
         urls =
           msg.attachments
           |> Enum.map(& &1.url)
+
+        filenames =
+          urls
+          |> Enum.map(&URI.parse(&1).path)
+          |> Enum.map(&(String.split(&1, "/") |> List.last()))
+
+        Enum.zip(urls, filenames)
+        |> Enum.each(fn {url, filename} ->
+          response = Req.get!(url)
+          File.write!(filename, response.body)
+        end)
+
+        # |> Enum.map(&Req.get!(&1))
+        # |> Enum.map(& &1.body)
+        # |> Enum.each(&File.write("image.#{type}", &1))
+
         Nostrum.Api.create_message(
           msg.channel_id,
           content: "Converting to #{type}!",
