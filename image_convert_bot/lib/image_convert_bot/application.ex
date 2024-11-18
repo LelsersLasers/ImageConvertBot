@@ -4,8 +4,13 @@ defmodule ImageConvertBot.Application do
   def start(_type, _args) do
     IO.puts("Starting ImageConvertBot")
 
-    children = [ImageConvertBot]
-    IO.inspect(children)
+    children = [
+      %{
+        id: ImageConvertBot,
+        start: {Nostrum.Consumer, :start_link, [ImageConvertBot]}
+      }
+    ]
+
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
