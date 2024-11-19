@@ -66,6 +66,7 @@ defmodule ImageConvertBot do
 
     msg
     |> fetch_image_urls_and_filenames(attachments)
+    |> ensure_unique()
     |> Enum.map(fn attachment ->
       Task.async(fn -> download_and_convert_image(attachment, type) end)
     end)
@@ -96,6 +97,26 @@ defmodule ImageConvertBot do
 
     File.rm!(full_filename)
     new_full_filename
+  end
+
+  defp ensure_unique(url_filenames) do
+    Enum.reduce(url_filenames, {[], %{}}, fn {url, filename}, {acc, seen} ->
+      rootname = Path.rootname(filename)
+      ext = Path.extname(filename)
+
+      {new_filename, new_seen} =
+        case Map.get(seen, rootname) do
+          nil ->
+            {filename, Map.put(seen, rootname, 1)}
+
+          count ->
+            unique_name = "#{rootname}_#{count + 1}#{ext}"
+            {unique_name, Map.put(seen, rootname, count + 1)}
+        end
+
+      {acc ++ [{url, new_filename}], new_seen}
+    end)
+    |> elem(0)
   end
 
   defp send_converted_files(files, msg) do
