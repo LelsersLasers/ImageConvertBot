@@ -62,7 +62,10 @@ defmodule ImageConvertBot do
 
     msg
     |> fetch_image_urls_and_filenames(attachments)
-    |> Enum.map(&download_and_convert_image(&1, type))
+    |> Enum.map(fn attachment ->
+      Task.async(fn -> download_and_convert_image(attachment, type) end)
+    end)
+    |> Enum.map(&Task.await(&1, 30_000))
     |> send_converted_files(msg)
     |> Enum.each(&File.rm!(&1))
   end
