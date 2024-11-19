@@ -2,6 +2,8 @@ defmodule ImageConvertBot do
   use Nostrum.Consumer
 
   @folder Path.join([File.cwd!(), "temp"])
+  @input_folder Path.join([@folder, "input"])
+  @output_folder Path.join([@folder, "output"])
 
   def handle_event({:READY, _event, _state}) do
     IO.puts("ImageConvertBot is connected!")
@@ -36,7 +38,7 @@ defmodule ImageConvertBot do
   defp handle_convert_command(msg) do
     with true <- String.starts_with?(msg.content, "!convert"),
          [_cmd, type] <- String.split(msg.content, " ", parts: 2),
-         :ok <- ensure_temp_folder(),
+         :ok <- ensure_temp_folders(),
          attachments when attachments != [] <- msg.attachments do
       process_conversion(msg, type, attachments)
     else
@@ -51,8 +53,10 @@ defmodule ImageConvertBot do
     end
   end
 
-  defp ensure_temp_folder do
+  defp ensure_temp_folders do
     File.mkdir_p!(@folder)
+    File.mkdir_p!(@input_folder)
+    File.mkdir_p!(@output_folder)
     :ok
   end
 
@@ -67,7 +71,7 @@ defmodule ImageConvertBot do
     end)
     |> Enum.map(&Task.await(&1, 30_000))
     |> send_converted_files(msg)
-    |> Enum.each(&File.rm(&1))
+    |> Enum.each(&File.rm!(&1))
   end
 
   defp fetch_image_urls_and_filenames(_msg, attachments) do
@@ -78,28 +82,20 @@ defmodule ImageConvertBot do
   end
 
   defp download_and_convert_image({url, filename}, type) do
-    full_filename = Path.join(@folder, filename)
-    new_full_filename = Path.join(@folder, Path.rootname(filename) <> ".#{type}")
+    full_filename = Path.join(@input_folder, filename)
+    new_full_filename = Path.join(@output_folder, Path.rootname(filename) <> ".#{type}")
 
     url
     |> Req.get!()
     |> Map.get(:body)
     |> (&File.write!(full_filename, &1)).()
 
-    if full_filename != new_full_filename do
-      convert_image(full_filename, new_full_filename)
-    else
-      full_filename
-    end
-  end
-
-  defp convert_image(input, output) do
     ExMagick.init()
-    |> ExMagick.put_image(input)
-    |> ExMagick.output(output)
+    |> ExMagick.put_image(full_filename)
+    |> ExMagick.output(new_full_filename)
 
-    File.rm!(input)
-    output
+    File.rm!(full_filename)
+    new_full_filename
   end
 
   defp send_converted_files(files, msg) do
