@@ -67,7 +67,7 @@ defmodule ImageConvertBot do
     end)
     |> Enum.map(&Task.await(&1, 30_000))
     |> send_converted_files(msg)
-    |> Enum.each(&File.rm!(&1))
+    |> Enum.each(&File.rm(&1))
   end
 
   defp fetch_image_urls_and_filenames(_msg, attachments) do
