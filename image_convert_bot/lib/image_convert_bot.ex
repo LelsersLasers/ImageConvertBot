@@ -1,27 +1,25 @@
 defmodule ImageConvertBot do
   use Nostrum.Consumer
 
-  @folder Path.join([File.cwd!(), "temp"])
-  @input_folder Path.join([@folder, "input"])
-  @output_folder Path.join([@folder, "output"])
+  @folder Path.join(File.cwd!(), "temp")
+  @input_folder Path.join(@folder, "input")
+  @output_folder Path.join(@folder, "output")
 
   def handle_event({:READY, _event, _state}) do
     IO.puts("ImageConvertBot is connected!")
   end
 
+  def handle_event(
+        {:MESSAGE_CREATE, %Nostrum.Struct.Message{author: %{bot: true}} = _msg, _state}
+      ),
+      do: :noop
+
   def handle_event({:MESSAGE_CREATE, msg, _state}) do
-    cond do
-      msg.author.bot ->
-        :noop
-
-      String.starts_with?(msg.content, "!help") ->
-        handle_help_command(msg)
-
-      String.starts_with?(msg.content, "!convert") ->
-        handle_convert_command(msg)
-
-      true ->
-        :noop
+    case msg.content do
+      "!help" <> _ -> handle_help_command(msg)
+      "!convert " <> type -> handle_convert_command(msg, type)
+      "!convert" -> reply_with(msg, "Please provide a type to convert to!")
+      _ -> :noop
     end
   end
 
@@ -30,34 +28,36 @@ defmodule ImageConvertBot do
   defp handle_help_command(msg) do
     reply_with(
       msg,
-      "Use: `!convert <type>` and add images as attachments to convert them.\n" <>
-        "Example: `!convert png`"
+      """
+      Use: `!convert <type>` and add images as attachments to convert them.
+      Example: `!convert png`
+      """
     )
   end
 
-  defp handle_convert_command(msg) do
-    with true <- String.starts_with?(msg.content, "!convert"),
-         [_cmd, type] <- String.split(msg.content, " ", parts: 2),
-         :ok <- ensure_temp_folders(),
-         attachments when attachments != [] <- msg.attachments do
-      process_conversion(msg, type, attachments)
-    else
-      false ->
-        :noop
+  defp handle_convert_command(msg, type) do
+    case ensure_temp_folders() do
+      :ok ->
+        if Enum.empty?(msg.attachments) do
+          reply_with(msg, "Please provide at least one image to convert!")
+        else
+          process_conversion(msg, type, msg.attachments)
+        end
 
-      [_cmd] ->
-        reply_with(msg, "Please provide a type to convert to!")
-
-      [] ->
-        reply_with(msg, "Please provide at least one image to convert!")
+      {:error, reason} ->
+        reply_with(msg, "Error ensuring temp folders: #{reason}")
     end
   end
 
   defp ensure_temp_folders do
-    File.mkdir_p!(@folder)
-    File.mkdir_p!(@input_folder)
-    File.mkdir_p!(@output_folder)
-    :ok
+    try do
+      File.mkdir_p!(@folder)
+      File.mkdir_p!(@input_folder)
+      File.mkdir_p!(@output_folder)
+      :ok
+    rescue
+      e in File.Error -> {:error, e.reason}
+    end
   end
 
   defp process_conversion(msg, type, attachments) do
@@ -65,49 +65,21 @@ defmodule ImageConvertBot do
     Nostrum.Api.start_typing(msg.channel_id)
 
     results =
-      msg
-      |> fetch_image_urls_and_filenames(attachments)
+      attachments
+      |> fetch_image_urls_and_filenames()
       |> ensure_unique()
-      |> Enum.map(fn attachment ->
-        Task.async(fn -> download_and_convert_image(attachment, type) end)
-      end)
+      |> Enum.map(&Task.async(fn -> download_and_convert_image(&1, type) end))
       |> Enum.map(&Task.await(&1, 30_000))
 
     send_converted_files(results, msg)
-
-    Enum.each(results, fn
-      {:ok, filename} -> File.rm!(filename)
-      _ -> :noop
-    end)
+    cleanup_files(results)
   end
 
-  defp fetch_image_urls_and_filenames(_msg, attachments) do
+  defp fetch_image_urls_and_filenames(attachments) do
     Enum.map(attachments, fn %{url: url} ->
       filename = url |> URI.parse() |> Map.get(:path) |> Path.basename()
       {url, filename}
     end)
-  end
-
-  defp download_and_convert_image({url, filename}, type) do
-    full_filename = Path.join(@input_folder, filename)
-    new_full_filename = Path.join(@output_folder, Path.rootname(filename) <> ".#{type}")
-
-    url
-    |> Req.get!()
-    |> Map.get(:body)
-    |> (&File.write!(full_filename, &1)).()
-
-    ExMagick.init()
-    |> ExMagick.put_image(full_filename)
-    |> ExMagick.output(new_full_filename)
-
-    File.rm!(full_filename)
-
-    if File.exists?(new_full_filename) do
-      {:ok, new_full_filename}
-    else
-      {:error, filename}
-    end
   end
 
   defp ensure_unique(url_filenames) do
@@ -130,26 +102,58 @@ defmodule ImageConvertBot do
     |> elem(0)
   end
 
+  defp download_and_convert_image({url, filename}, type) do
+    full_filename = Path.join(@input_folder, filename)
+    new_full_filename = Path.join(@output_folder, Path.rootname(filename) <> ".#{type}")
+
+    try do
+      url
+      |> Req.get!()
+      |> Map.get(:body)
+      |> (&File.write!(full_filename, &1)).()
+
+      ExMagick.init()
+      |> ExMagick.put_image(full_filename)
+      |> ExMagick.output(new_full_filename)
+
+      File.rm!(full_filename)
+
+      if File.exists?(new_full_filename), do: {:ok, new_full_filename}, else: {:error, filename}
+    rescue
+      _ -> {:error, filename}
+    end
+  end
+
   defp send_converted_files(results, msg) do
-    message =
-      Enum.reduce(results, "Resulting files:", fn
-        {:error, filename}, acc -> acc <> "\n- Error: *#{Path.basename(filename)}*"
-        _, acc -> acc
+    failed_message =
+      results
+      |> Enum.filter(fn
+        {:error, _} -> true
+        _ -> false
       end)
+      |> Enum.map_join(fn {:error, filename} -> "\n- Error: *#{Path.basename(filename)}*" end)
 
     files =
-      Enum.map(results, fn
-        {:ok, filename} -> filename
-        _ -> nil
+      results
+      |> Enum.filter(fn
+        {:ok, _} -> true
+        _ -> false
       end)
-      |> Enum.filter(&(&1 != nil))
+      |> Enum.map(fn {:ok, filename} -> filename end)
 
     Nostrum.Api.create_message(
       msg.channel_id,
-      content: message,
+      content: "Resulting files:" <> failed_message,
       message_reference: %{message_id: msg.id},
       files: files
     )
+  end
+
+  defp cleanup_files(results) do
+    Enum.each(results, fn
+      {:ok, filename} -> File.rm!(filename)
+      _ -> :noop
+    end)
   end
 
   defp reply_with(msg, content) do
