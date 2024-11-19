@@ -64,15 +64,17 @@ defmodule ImageConvertBot do
     Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
     Nostrum.Api.start_typing(msg.channel_id)
 
-    msg
-    |> fetch_image_urls_and_filenames(attachments)
-    |> ensure_unique()
-    |> Enum.map(fn attachment ->
-      Task.async(fn -> download_and_convert_image(attachment, type) end)
-    end)
-    |> Enum.map(&Task.await(&1, 30_000))
-    |> send_converted_files(msg)
-    |> Enum.each(&File.rm!(&1))
+    new_full_filenames =
+      msg
+      |> fetch_image_urls_and_filenames(attachments)
+      |> ensure_unique()
+      |> Enum.map(fn attachment ->
+        Task.async(fn -> download_and_convert_image(attachment, type) end)
+      end)
+      |> Enum.map(&Task.await(&1, 30_000))
+
+    send_converted_files(new_full_filenames, msg)
+    Enum.each(new_full_filenames, &File.rm/1)
   end
 
   defp fetch_image_urls_and_filenames(_msg, attachments) do
@@ -126,8 +128,6 @@ defmodule ImageConvertBot do
       message_reference: %{message_id: msg.id},
       files: files
     )
-
-    files
   end
 
   defp reply_with(msg, content) do
