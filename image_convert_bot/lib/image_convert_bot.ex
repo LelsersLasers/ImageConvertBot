@@ -64,7 +64,7 @@ defmodule ImageConvertBot do
     Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
     Nostrum.Api.start_typing(msg.channel_id)
 
-    new_full_filenames =
+    results =
       msg
       |> fetch_image_urls_and_filenames(attachments)
       |> ensure_unique()
@@ -73,8 +73,12 @@ defmodule ImageConvertBot do
       end)
       |> Enum.map(&Task.await(&1, 30_000))
 
-    send_converted_files(new_full_filenames, msg)
-    Enum.each(new_full_filenames, &File.rm/1)
+    send_converted_files(results, msg)
+
+    Enum.each(results, fn
+      {:ok, filename} -> File.rm!(filename)
+      _ -> :noop
+    end)
   end
 
   defp fetch_image_urls_and_filenames(_msg, attachments) do
@@ -98,7 +102,12 @@ defmodule ImageConvertBot do
     |> ExMagick.output(new_full_filename)
 
     File.rm!(full_filename)
-    new_full_filename
+
+    if File.exists?(new_full_filename) do
+      {:ok, new_full_filename}
+    else
+      {:error, filename}
+    end
   end
 
   defp ensure_unique(url_filenames) do
@@ -121,10 +130,23 @@ defmodule ImageConvertBot do
     |> elem(0)
   end
 
-  defp send_converted_files(files, msg) do
+  defp send_converted_files(results, msg) do
+    message =
+      Enum.reduce(results, "Resulting files:", fn
+        {:error, filename}, acc -> acc <> "\n- Error: *#{Path.basename(filename)}*"
+        _, acc -> acc
+      end)
+
+    files =
+      Enum.map(results, fn
+        {:ok, filename} -> filename
+        _ -> nil
+      end)
+      |> Enum.filter(&(&1 != nil))
+
     Nostrum.Api.create_message(
       msg.channel_id,
-      content: "Resulting files:",
+      content: message,
       message_reference: %{message_id: msg.id},
       files: files
     )
