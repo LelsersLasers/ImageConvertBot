@@ -61,7 +61,7 @@ defmodule ImageConvertBot do
   end
 
   defp process_conversion(msg, type, attachments) do
-    Nostrum.Api.create_reaction(msg.channel_id, msg.id, "👍")
+    Nostrum.Api.create_reaction(msg.channel_id, msg.id, "🫡")
     Nostrum.Api.start_typing(msg.channel_id)
 
     results =
