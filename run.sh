@@ -1,7 +1,12 @@
 #!/bin/bash
 
 cd /home/millankumar/code/ImageConvertBot/image_convert_bot
+export DISCORD_BOT_TOKEN=""
 
-docker build -t imageconvertbot .
+mix deps.get
+mix compile
+mix run --no-halt
 
-docker run --rm -e DISCORD_BOT_TOKEN="" imageconvertbot
+
+# docker build -t imageconvertbot .
+# docker run --rm -e DISCORD_BOT_TOKEN="" imageconvertbot
