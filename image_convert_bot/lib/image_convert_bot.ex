@@ -5,11 +5,6 @@ defmodule ImageConvertBot do
   @input_folder Path.join(@folder, "input")
   @output_folder Path.join(@folder, "output")
 
-  def start_link() do
-    :timer.sleep(1000)
-    Nostrum.Consumer.start_link()
-  end
-
   def handle_event({:READY, _event, _state}) do
     IO.puts("ImageConvertBot is connected!")
   end
