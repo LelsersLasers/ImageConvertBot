@@ -30,6 +30,7 @@ defmodule ImageConvertBot do
       msg,
       """
       Use: `!convert <type>` and add images as attachments to convert them.
+      Or reply to a message with `!convert <type>` to convert the images in that message.
       Example: `!convert png`
       """
     )
