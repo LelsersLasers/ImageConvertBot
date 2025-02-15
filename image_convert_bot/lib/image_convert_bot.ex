@@ -112,65 +112,53 @@ defmodule ImageConvertBot do
     full_filename = Path.join(@input_folder, filename)
     new_full_filename = Path.join(@output_folder, Path.rootname(filename) <> ".#{type}")
 
-    # try do
-    url
-    |> Req.get!()
-    |> Map.get(:body)
-    |> (&File.write!(full_filename, &1)).()
+    try do
+      url
+      |> Req.get!()
+      |> Map.get(:body)
+      |> (&File.write!(full_filename, &1)).()
 
-    ExMagick.init()
-    |> ExMagick.put_image(full_filename)
-    |> ExMagick.output(new_full_filename)
+      ExMagick.init()
+      |> ExMagick.put_image(full_filename)
+      |> ExMagick.output(new_full_filename)
 
-    File.rm!(full_filename)
+      File.rm!(full_filename)
 
-    if File.exists?(new_full_filename) do
-      {:ok, new_full_filename}
-    else
-      rootname = Path.rootname(filename)
-      wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{type}")
+      if File.exists?(new_full_filename) do
+        {:ok, new_full_filename}
+      else
+        rootname = Path.rootname(filename)
+        wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{type}")
 
-      IO.inspect(wildcard_pattern)
+        case Path.wildcard(wildcard_pattern) do
+          [] ->
+            {:error, filename}
 
-      case Path.wildcard(wildcard_pattern) do
-        [] ->
-          {:error, filename}
+          matches ->
+            last_match =
+              matches
+              |> Enum.max_by(
+                &(Path.basename(&1)
+                  |> Path.rootname()
+                  |> String.split("-")
+                  |> List.last()
+                  |> String.to_integer())
+              )
 
-        matches ->
-          # last_match = List.last(matches)
-          IO.inspect(matches)
+            File.rename!(last_match, new_full_filename)
 
-          last_match =
             matches
-            |> Enum.max_by(
-              &(Path.basename(&1)
-                |> Path.rootname()
-                |> String.split("-")
-                |> List.last()
-                |> String.to_integer())
-            )
+            |> Enum.drop(-1)
+            |> Enum.each(&File.rm/1)
 
-          IO.inspect(last_match)
-
-          File.rename!(last_match, new_full_filename)
-
-          IO.puts("Removing all other matches")
-
-          matches
-          |> Enum.drop(-1)
-          |> Enum.each(&File.rm/1)
-
-          IO.puts("Done removing all other matches")
-
-          {:ok, new_full_filename}
+            {:ok, new_full_filename}
+        end
       end
+    rescue
+      _ ->
+        File.rm(new_full_filename)
+        {:error, filename}
     end
-
-    # rescue
-    #   _ ->
-    #     File.rm(new_full_filename)
-    #     {:error, filename}
-    # end
   end
 
   defp send_converted_files(results, msg) do
