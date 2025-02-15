@@ -118,22 +118,36 @@ defmodule ImageConvertBot do
       |> Map.get(:body)
       |> (&File.write!(full_filename, &1)).()
 
-      IO.puts("A: Converting #{full_filename} to #{new_full_filename}")
-
       ExMagick.init()
       |> ExMagick.put_image(full_filename)
       |> ExMagick.output(new_full_filename)
 
-      IO.puts("B: Converted #{full_filename} to #{new_full_filename}")
-
       File.rm!(full_filename)
 
-      IO.puts("C: Removed #{full_filename}")
+      if File.exists?(new_full_filename) do
+        {:ok, new_full_filename}
+      else
+        rootname = Path.rootname(filename)
+        ext = Path.extname(filename)
+        wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{ext}")
 
-      if File.exists?(new_full_filename), do: {:ok, new_full_filename}, else: {:error, filename}
+        case Path.wildcard(wildcard_pattern) do
+          [] ->
+            {:error, filename}
+
+          matches ->
+            last_match = Enum.last(matches)
+            File.rename!(last_match, new_full_filename)
+
+            matches
+            |> Enum.drop(-1)
+            |> Enum.each(&File.rm/1)
+
+            {:ok, new_full_filename}
+        end
+      end
     rescue
       _ ->
-        IO.puts("Error converting #{full_filename} to #{new_full_filename}")
         File.rm(new_full_filename)
         {:error, filename}
     end
