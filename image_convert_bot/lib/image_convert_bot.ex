@@ -126,7 +126,9 @@ defmodule ImageConvertBot do
 
       if File.exists?(new_full_filename), do: {:ok, new_full_filename}, else: {:error, filename}
     rescue
-      _ -> {:error, filename}
+      _ ->
+        File.rm(new_full_filename)
+        {:error, filename}
     end
   end
 
