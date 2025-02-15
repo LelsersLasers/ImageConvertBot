@@ -144,6 +144,7 @@ defmodule ImageConvertBot do
             matches
             |> Enum.max_by(
               &(Path.basename(&1)
+                |> Path.rootname()
                 |> String.split("-")
                 |> List.last()
                 |> String.to_integer())
