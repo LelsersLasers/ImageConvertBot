@@ -40,16 +40,23 @@ defmodule ImageConvertBot do
       :ok ->
         attachments = msg.attachments
 
+        # attachments =
+        #   case msg.referenced_message do
+        #     nil ->
+        #       attachments
+
+        #     ref_msg when not ref_msg.attachments == [] ->
+        #       attachments ++ ref_msg.attachments
+
+        #     _ ->
+        #       attachments
+        #   end
+
         attachments =
           case msg.referenced_message do
-            nil ->
-              attachments
-
-            ref_msg when not Enum.empty?(ref_msg.attachments) ->
-              attachments ++ ref_msg.attachments
-
-            _ ->
-              attachments
+            nil -> attachments
+            ref_msg -> attachments ++ ref_msg.attachments
+            _ -> attachments
           end
 
         if Enum.empty?(attachments) do
