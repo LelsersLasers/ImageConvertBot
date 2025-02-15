@@ -38,24 +38,10 @@ defmodule ImageConvertBot do
   defp handle_convert_command(msg, type) do
     case ensure_temp_folders() do
       :ok ->
-        attachments = msg.attachments
-
-        # attachments =
-        #   case msg.referenced_message do
-        #     nil ->
-        #       attachments
-
-        #     ref_msg when not ref_msg.attachments == [] ->
-        #       attachments ++ ref_msg.attachments
-
-        #     _ ->
-        #       attachments
-        #   end
-
         attachments =
           case msg.referenced_message do
-            nil -> attachments
-            ref_msg -> attachments ++ ref_msg.attachments
+            nil -> msg.attachments
+            ref_msg -> msg.attachments ++ ref_msg.attachments
           end
 
         if Enum.empty?(attachments) do
