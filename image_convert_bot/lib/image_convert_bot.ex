@@ -131,12 +131,16 @@ defmodule ImageConvertBot do
         ext = Path.extname(filename)
         wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{ext}")
 
+        IO.inspect(wildcard_pattern)
+
         case Path.wildcard(wildcard_pattern) do
           [] ->
             {:error, filename}
 
           matches ->
             # last_match = List.last(matches)
+            IO.inspect(matches)
+
             last_match =
               matches
               |> Enum.max_by(
@@ -146,11 +150,17 @@ defmodule ImageConvertBot do
                   |> String.to_integer())
               )
 
+            IO.inspect(last_match)
+
             File.rename!(last_match, new_full_filename)
+
+            IO.puts("Removing all other matches")
 
             matches
             |> Enum.drop(-1)
             |> Enum.each(&File.rm/1)
+
+            IO.puts("Done removing all other matches")
 
             {:ok, new_full_filename}
         end
