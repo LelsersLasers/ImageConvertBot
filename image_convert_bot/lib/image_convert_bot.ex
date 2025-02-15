@@ -56,7 +56,6 @@ defmodule ImageConvertBot do
           case msg.referenced_message do
             nil -> attachments
             ref_msg -> attachments ++ ref_msg.attachments
-            _ -> attachments
           end
 
         if Enum.empty?(attachments) do
