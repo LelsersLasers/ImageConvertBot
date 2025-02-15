@@ -136,7 +136,16 @@ defmodule ImageConvertBot do
             {:error, filename}
 
           matches ->
-            last_match = Enum.last(matches)
+            # last_match = List.last(matches)
+            last_match =
+              matches
+              |> Enum.max_by(
+                &(Path.basename(&1)
+                  |> String.split("-")
+                  |> List.last()
+                  |> String.to_integer())
+              )
+
             File.rename!(last_match, new_full_filename)
 
             matches
