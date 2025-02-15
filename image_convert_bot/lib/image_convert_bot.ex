@@ -128,8 +128,7 @@ defmodule ImageConvertBot do
         {:ok, new_full_filename}
       else
         rootname = Path.rootname(filename)
-        ext = Path.extname(filename)
-        wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{ext}")
+        wildcard_pattern = Path.join(@output_folder, "#{rootname}-*#{type}")
 
         IO.inspect(wildcard_pattern)
 
