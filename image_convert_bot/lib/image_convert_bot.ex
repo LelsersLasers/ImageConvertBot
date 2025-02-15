@@ -38,10 +38,24 @@ defmodule ImageConvertBot do
   defp handle_convert_command(msg, type) do
     case ensure_temp_folders() do
       :ok ->
-        if Enum.empty?(msg.attachments) do
+        attachments = msg.attachments
+
+        attachments =
+          case msg.referenced_message do
+            nil ->
+              attachments
+
+            ref_msg when not Enum.empty?(ref_msg.attachments) ->
+              attachments ++ ref_msg.attachments
+
+            _ ->
+              attachments
+          end
+
+        if Enum.empty?(attachments) do
           reply_with(msg, "Please provide at least one image to convert!")
         else
-          process_conversion(msg, type, msg.attachments)
+          process_conversion(msg, type, attachments)
         end
 
       {:error, reason} ->
